@@ -2,6 +2,8 @@ import {useEffect, useState} from 'react'
 import Filter from "./components/Filter";
 import PersonForm from "./components/PersonForm";
 import Persons from "./components/Persons";
+import Prompt from "./components/Prompt"
+import Error from "./components/Error"
 import personService from './services/PersonService'
 
 const App = () => {
@@ -9,6 +11,8 @@ const App = () => {
     const [newName, setNewName] = useState('')
     const [newNumber, setNewNumber] = useState('')
     const [filter, setFilter] = useState('')
+    const [notification, setNotification] = useState(null)
+    const [error, setError] = useState(null)
 
     const addNewPerson = (event) => {
         event.preventDefault()
@@ -21,6 +25,16 @@ const App = () => {
                     setPersons(persons.map(p => p.id !== person.id ? p : newPerson))
                     setNewName('')
                     setNewNumber('')
+                    setNotification(`Phone number for ${newName} has been updated`)
+                    setTimeout(() => {
+                        setNotification(null)
+                    }, 5000)
+                }).catch((error) => {
+                    setError(`Information of ${newName} has already been removed from server`)
+                    setPersons(persons.filter(p => p.id !== person.id))
+                    setTimeout(() => {
+                        setError(null)
+                    }, 5000)
                 })
                 return;
             } else {
@@ -39,6 +53,10 @@ const App = () => {
                 setPersons([...persons, person])
                 setNewName('')
                 setNewNumber('')
+                setNotification(`${newName} has been added`)
+                setTimeout(() => {
+                    setNotification(null)
+                }, 5000)
             })
     }
 
@@ -46,6 +64,10 @@ const App = () => {
         if (window.confirm(`Delete ${person.name} ?`)) {
             personService.deletePerson(person.id).then(data => {
                 setPersons(persons.filter(p => p.id !== person.id))
+                setNotification(`${person.name} has been deleted`)
+                setTimeout(() => {
+                    setNotification(null)
+                }, 5000)
             })
         }
     }
@@ -60,6 +82,8 @@ const App = () => {
     return (
         <div>
             <h2>Phonebook</h2>
+            <Prompt message={notification} />
+            <Error message={error} />
             <Filter filter={filter} setFilter={setFilter} />
             <h2>add a new</h2>
             <PersonForm newName={newName} setNewName={setNewName} newNumber={newNumber} setNewNumber={setNewNumber} addNewPerson={addNewPerson} />
