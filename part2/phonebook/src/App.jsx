@@ -1,31 +1,8 @@
 import {useEffect, useState} from 'react'
-import axios from "axios";
-
-const Filter = ({filter, setFilter}) => (
-    <div>
-        filter shown with <input value={filter} onChange={e => setFilter(e.target.value)}/>
-    </div>
-)
-
-const PersonForm = ({newName, newNumber, setNewName, setNewNumber, addNewPerson}) => (
-    <form onSubmit={addNewPerson}>
-        <div>
-            name: <input value={newName} onChange={e => setNewName(e.target.value)}/>
-        </div>
-        <div>
-            number: <input value={newNumber} onChange={e => setNewNumber(e.target.value)}/>
-        </div>
-        <div>
-            <button type="submit">add</button>
-        </div>
-    </form>
-)
-
-const Persons = ({ persons }) =>
-    (persons.map(person =>
-            (<div key={person.name}>{person.name} {person.number}</div>))
-    )
-
+import Filter from "./components/Filter";
+import PersonForm from "./components/PersonForm";
+import Persons from "./components/Persons";
+import personService from './services/PersonService'
 
 const App = () => {
     const [persons, setPersons] = useState([])
@@ -37,26 +14,47 @@ const App = () => {
         event.preventDefault()
 
         if (persons.map(p => p.name).includes(newName)) {
-            alert(`${newName} is already added to phonebook`)
-            return;
+            if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+                const person = persons.find(p => p.name === newName)
+                const newPerson = {...person, number: newNumber}
+                personService.update(person.id, newPerson).then(newPerson => {
+                    setPersons(persons.map(p => p.id !== person.id ? p : newPerson))
+                    setNewName('')
+                    setNewNumber('')
+                })
+                return;
+            } else {
+                alert(`${newName} is already added to phonebook`)
+                return;
+            }
         }
 
         const newPerson = {
             name: newName,
             number: newNumber
         }
-        setPersons([...persons, newPerson])
-        setNewName('')
-        setNewNumber('')
+
+        personService.create(newPerson)
+            .then(person => {
+                setPersons([...persons, person])
+                setNewName('')
+                setNewNumber('')
+            })
+    }
+
+    const deletePerson = (person) => {
+        if (window.confirm(`Delete ${person.name} ?`)) {
+            personService.deletePerson(person.id).then(data => {
+                setPersons(persons.filter(p => p.id !== person.id))
+            })
+        }
     }
 
     const personsToShow = persons.filter(person => filter === '' ? true : person.name.toLowerCase().indexOf(filter.toLowerCase()) !== -1)
 
     useEffect(() => {
-        axios.get("http://localhost:3001/persons")
-            .then(res => {
-                setPersons(res.data)
-            })
+        personService.getAll()
+            .then(initialPersons => setPersons(initialPersons))
     }, []);
 
     return (
@@ -66,7 +64,7 @@ const App = () => {
             <h2>add a new</h2>
             <PersonForm newName={newName} setNewName={setNewName} newNumber={newNumber} setNewNumber={setNewNumber} addNewPerson={addNewPerson} />
             <h2>Numbers</h2>
-            <Persons persons={personsToShow}  />
+            <Persons persons={personsToShow} deletePerson={deletePerson} />
         </div>
     )
 }
